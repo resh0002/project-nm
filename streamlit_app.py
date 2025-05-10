@@ -10,7 +10,7 @@ encoder = joblib.load("label_encoder.jb")
 def haversine(lat1, lon1, lat2, lon2):
     return geodesic((lat1, lon1),(lat2,lon2)).km
 
-st.title("Fraud Detection System")
+st.title("reshma")
 st.write("Enter the Transaction details Below")
 
 merchant = st.text_input("Merchant Name")
