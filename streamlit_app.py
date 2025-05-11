@@ -7,35 +7,39 @@ from geopy.distance import geodesic
 model = joblib.load("fraud_detection_model.jb")
 encoder = joblib.load("label_encoder.jb")
 
-# --- Custom CSS for background image ---
-st.markdown(
-    f"""
-    <style>
-    .stApp {{
-        background-image: url("https://rulesware.com/wp-content/uploads/2021/09/fraud.jpg");
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-    }}
-    .block-container {{
-        background-color: rgba(255, 255, 255, 0.85);
-        padding: 2rem;
-        border-radius: 10px;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+# --- Set full-page background image with working CSS ---
+def set_bg_image():
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("https://rulesware.com/wp-content/uploads/2021/09/fraud.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
+        /* Make widgets stand out on top of background */
+        .main {{
+            background-color: rgba(255, 255, 255, 0.85);
+            padding: 2rem;
+            border-radius: 10px;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+set_bg_image()
 
 # --- Haversine distance function ---
 def haversine(lat1, lon1, lat2, lon2):
     return geodesic((lat1, lon1), (lat2, lon2)).km
 
-# --- App Title ---
+# --- Title and form ---
 st.title("💳 Fraud Detection System")
 st.write("### Enter the transaction details below:")
 
-# --- Inputs ---
 merchant = st.text_input("Merchant Name")
 category = st.text_input("Category")
 amt = st.number_input("Transaction Amount", min_value=0.0, format="%.2f")
