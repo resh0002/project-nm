@@ -4,15 +4,19 @@ import joblib
 from geopy.distance import geodesic
 
 # --- Load model and encoders ---
-model = joblib.load("fraud_detection_model.jb")
-encoder = joblib.load("label_encoder.jb")
+try:
+    model = joblib.load("fraud_detection_model.jb")
+    encoder = joblib.load("label_encoder.jb")
+except FileNotFoundError:
+    st.error("❌ Model or encoder file not found.")
+    st.stop()
 
-# --- Set full-page background image with working CSS ---
+# --- Set background image using reliable CSS ---
 def set_bg_image():
     st.markdown(
         """
         <style>
-        .stApp {
+        body {
             background-image: url("https://rulesware.com/wp-content/uploads/2021/09/fraud.jpg");
             background-size: cover;
             background-position: center;
@@ -20,65 +24,46 @@ def set_bg_image():
             background-attachment: fixed;
         }
 
-        /* Customize the layout to show content properly over the background */
-        .main {
+        .block-container {
             background-color: rgba(255, 255, 255, 0.85);
             padding: 2rem;
             border-radius: 10px;
             box-shadow: 0px 10px 20px rgba(0,0,0,0.2);
         }
 
-        /* Add specific styling to improve readability */
         .stTextInput, .stNumberInput, .stSelectbox, .stSlider, .stButton {
             background-color: rgba(255, 255, 255, 0.9) !important;
             padding: 10px;
             border-radius: 8px;
         }
 
-        /* Heading and prediction results */
         .stTitle, .stSubheader, .stError {
             color: #333;
         }
 
-        /* Money Animation for legitimate transaction */
-        .money-legit {{
+        .money-legit {
             font-size: 40px;
             color: green;
             animation: moneyFlow 2s infinite;
-        }}
+        }
 
-        /* Money Animation for fraudulent transaction */
-        .money-fraud {{
+        .money-fraud {
             font-size: 40px;
             color: red;
             animation: redAlert 2s infinite;
-        }}
+        }
 
-        /* Keyframes for money flowing */
-        @keyframes moneyFlow {{
-            0% {{
-                transform: translateY(0);
-            }}
-            50% {{
-                transform: translateY(-20px);
-            }}
-            100% {{
-                transform: translateY(0);
-            }}
-        }}
+        @keyframes moneyFlow {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0); }
+        }
 
-        /* Keyframes for red alert */
-        @keyframes redAlert {{
-            0% {{
-                color: red;
-            }}
-            50% {{
-                color: darkred;
-            }}
-            100% {{
-                color: red;
-            }}
-        }}
+        @keyframes redAlert {
+            0% { color: red; }
+            50% { color: darkred; }
+            100% { color: red; }
+        }
         </style>
         """,
         unsafe_allow_html=True
@@ -123,16 +108,19 @@ if st.button("Check For Fraud"):
             try:
                 input_data[col] = encoder[col].transform(input_data[col])
             except ValueError:
-                input_data[col] = -1
+                input_data[col] = -1  # Use -1 for unseen categories
 
-        # Hash credit card number
-        input_data['cc_num'] = input_data['cc_num'].apply(lambda x: hash(x) % (10 ** 2))
+        # Hash credit card number with stable hashing
+        import hashlib
+        input_data['cc_num'] = input_data['cc_num'].apply(
+            lambda x: int(hashlib.sha256(x.encode()).hexdigest(), 16) % (10 ** 8)
+        )
 
         # Predict
         prediction = model.predict(input_data)[0]
         result = "🚨 Fraudulent Transaction" if prediction == 1 else "✅ Legitimate Transaction"
-        
-        # Display the result with animation
+
+        # Display result with animation
         if prediction == 1:
             st.markdown(
                 f"<div class='money-fraud'>🚨 Fraudulent Transaction 🚨</div>",
