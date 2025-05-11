@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 from geopy.distance import geodesic
+import hashlib
 
 # --- Load model and encoders ---
 try:
@@ -11,12 +12,12 @@ except FileNotFoundError:
     st.error("❌ Model or encoder file not found.")
     st.stop()
 
-# --- Set background image using reliable CSS ---
+# --- Set background image with visible content ---
 def set_bg_image():
     st.markdown(
         """
         <style>
-        body {
+        .stApp {
             background-image: url("https://rulesware.com/wp-content/uploads/2021/09/fraud.jpg");
             background-size: cover;
             background-position: center;
@@ -24,21 +25,11 @@ def set_bg_image():
             background-attachment: fixed;
         }
 
-        .block-container {
-            background-color: rgba(255, 255, 255, 0.85);
+        .main, .block-container {
+            background-color: rgba(255, 255, 255, 0.95);
             padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0px 10px 20px rgba(0,0,0,0.2);
-        }
-
-        .stTextInput, .stNumberInput, .stSelectbox, .stSlider, .stButton {
-            background-color: rgba(255, 255, 255, 0.9) !important;
-            padding: 10px;
-            border-radius: 8px;
-        }
-
-        .stTitle, .stSubheader, .stError {
-            color: #333;
+            border-radius: 12px;
+            box-shadow: 0px 0px 15px rgba(0,0,0,0.2);
         }
 
         .money-legit {
@@ -55,14 +46,13 @@ def set_bg_image():
 
         @keyframes moneyFlow {
             0% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+            50% { transform: translateY(-10px); }
             100% { transform: translateY(0); }
         }
 
         @keyframes redAlert {
-            0% { color: red; }
+            0%, 100% { color: red; }
             50% { color: darkred; }
-            100% { color: red; }
         }
         </style>
         """,
@@ -75,7 +65,7 @@ set_bg_image()
 def haversine(lat1, lon1, lat2, lon2):
     return geodesic((lat1, lon1), (lat2, lon2)).km
 
-# --- App Title ---
+# --- App title ---
 st.title("💳 Fraud Detection System")
 st.write("### Enter the transaction details below:")
 
@@ -96,41 +86,29 @@ cc_num = st.text_input("Credit Card Number", type="password")
 # --- Calculate distance ---
 distance = haversine(lat, long, merch_lat, merch_long)
 
-# --- Predict button ---
+# --- Prediction ---
 if st.button("Check For Fraud"):
     if merchant and category and cc_num:
         input_data = pd.DataFrame([[merchant, category, amt, distance, hour, day, month, gender, cc_num]],
                                   columns=['merchant', 'category', 'amt', 'distance', 'hour', 'day', 'month', 'gender', 'cc_num'])
 
-        # Encode categoricals
-        categorical_col = ['merchant', 'category', 'gender']
-        for col in categorical_col:
+        # Encode
+        for col in ['merchant', 'category', 'gender']:
             try:
                 input_data[col] = encoder[col].transform(input_data[col])
             except ValueError:
-                input_data[col] = -1  # Use -1 for unseen categories
+                input_data[col] = -1
 
-        # Hash credit card number with stable hashing
-        import hashlib
-        input_data['cc_num'] = input_data['cc_num'].apply(
-            lambda x: int(hashlib.sha256(x.encode()).hexdigest(), 16) % (10 ** 8)
-        )
+        # Hash CC number
+        input_data['cc_num'] = input_data['cc_num'].apply(lambda x: int(hashlib.sha256(x.encode()).hexdigest(), 16) % (10 ** 8))
 
         # Predict
         prediction = model.predict(input_data)[0]
-        result = "🚨 Fraudulent Transaction" if prediction == 1 else "✅ Legitimate Transaction"
-
-        # Display result with animation
         if prediction == 1:
-            st.markdown(
-                f"<div class='money-fraud'>🚨 Fraudulent Transaction 🚨</div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("<div class='money-fraud'>🚨 Fraudulent Transaction 🚨</div>", unsafe_allow_html=True)
         else:
-            st.markdown(
-                f"<div class='money-legit'>💵 Legitimate Transaction 💵</div>",
-                unsafe_allow_html=True
-            )
-        st.subheader(f"Prediction: {result}")
+            st.markdown("<div class='money-legit'>💵 Legitimate Transaction 💵</div>", unsafe_allow_html=True)
+
+        st.subheader(f"Prediction: {'Fraudulent' if prediction == 1 else 'Legitimate'}")
     else:
         st.error("❗ Please fill all required fields.")
